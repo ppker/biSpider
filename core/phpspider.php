@@ -356,6 +356,11 @@ class phpspider
         }
     }
 
+    /**
+     * 添加入口队列
+     * @param $url
+     * @param array $options
+     */
     public function add_scan_url($url, $options = array())
     {
         if (!$this->is_scan_page($url))
@@ -368,7 +373,7 @@ class phpspider
         $status = false;
         $link = array(
             'url'          => $url,            
-            'url_type'     => 'scan_page', 
+            'url_type'     => 'scan_page', // 入口标志
             'method'       => isset($options['method'])       ? $options['method']       : 'get',             
             'headers'      => isset($options['headers'])      ? $options['headers']      : array(),    
             'params'       => isset($options['params'])       ? $options['params']       : array(),           
@@ -409,14 +414,14 @@ class phpspider
             'depth'        => $depth,
         );
 
-        if ($this->is_list_page($url) && !$this->is_collect_url($url))
+        if ($this->is_list_page($url) && !$this->is_collect_url($url)) // list_page
         {
             log::debug(date("H:i:s")." Find list page: {$url}");
             $link['url_type'] = 'list_page';
             $status = $this->queue_lpush($link);
         }
 
-        if ($this->is_content_page($url) && !$this->is_collect_url($url))
+        if ($this->is_content_page($url) && !$this->is_collect_url($url)) // content_page
         {
             log::debug(date("H:i:s")." Find content page: {$url}");
             $link['url_type'] = 'content_page';
@@ -496,7 +501,7 @@ class phpspider
 
     public function start()
     {
-        $this->parse_command();
+        $this->parse_command(); // 检测命令
 
         // 爬虫开始时间
         self::$time_start = time();
@@ -562,21 +567,21 @@ class phpspider
         $this->export_auth();
 
         // 检查 scan_urls 
-        if (empty(self::$configs['scan_urls'])) 
+        if (empty(self::$configs['scan_urls'])) // 爬虫的入口链接
         {
             log::error("No scan url to start\n");
             exit;
         }
         
-        // 放这个位置，可以添加入口页面
-        if ($this->on_start) 
+        // 放这个位置，可以添加入口页面 前置操作
+        if ($this->on_start)
         {
             call_user_func($this->on_start, $this);
         }
 
         foreach ( self::$configs['scan_urls'] as $url ) 
         {
-            if (!$this->is_scan_page($url))
+            if (!$this->is_scan_page($url)) // 是否符合入口链接规则
             {
                 log::error("Domain of scan_urls (\"{$url}\") does not match the domains of the domain name\n");
                 exit;
@@ -587,7 +592,7 @@ class phpspider
         if (util::is_win()) 
         {
             self::$configs['name'] = mb_convert_encoding(self::$configs['name'], "gbk", "utf-8");
-            log::$log_show = true;
+            // log::$log_show = true; 这里给注释掉吧
         }
         else 
         {
@@ -653,6 +658,9 @@ class phpspider
             // 每采集成功一次页面，就刷新一次面板
             if (!log::$log_show) 
             {
+                if (util::is_win()) {
+                    $this->display_win_ui();
+                }
                 $this->display_ui();
             }
         } 
@@ -797,13 +805,13 @@ class phpspider
      */
     public function collect_page() 
     {
-        $count_collect_url = $this->count_collect_url();
+        $count_collect_url = $this->count_collect_url(); // 待爬取页面数量
         log::info(date("H:i:s")." Find pages: {$count_collect_url} \n");
 
-        $queue_lsize = $this->queue_lsize();
+        $queue_lsize = $this->queue_lsize(); // 队列长度
         log::info(date("H:i:s")." Waiting for collect pages: {$queue_lsize} \n");
 
-        $count_collected_url = $this->count_collected_url();
+        $count_collected_url = $this->count_collected_url(); // 已爬取页面数量
         log::info(date("H:i:s")." Collected pages: {$count_collected_url} \n");
 
         // 先进先出
@@ -1296,7 +1304,7 @@ class phpspider
         if (self::$tasknum > 1 || self::$save_running_state)
         {
             cls_redis::incr("collect_urls_num"); 
-            cls_redis::set("collect_urls-".md5($url), time()); 
+            cls_redis::set("collect_urls-".md5($url), time()); // url 记录
         }
         else 
         {
@@ -1461,7 +1469,7 @@ class phpspider
         if (self::$tasknum > 1 || self::$save_running_state)
         {
             $link = json_encode($link);
-            cls_redis::lpush("collect_queue", $link); 
+            cls_redis::lpush("collect_queue", $link);
         }
         else 
         {
@@ -1556,7 +1564,7 @@ class phpspider
     {
         if (self::$tasknum > 1 || self::$save_running_state)
         {
-            $lsize = cls_redis::lsize("collect_queue"); 
+            $lsize = cls_redis::lsize("collect_queue");
         }
         else 
         {
@@ -2120,6 +2128,36 @@ class phpspider
     {
         array_map(create_function('$a', 'print chr($a);'), array(27, 91, 72, 27, 91, 50, 74));
     }
+
+    public function display_win_ui() {
+
+        $display_str = "\033[1A\n\033[K-----------------------------\033[47;30m PHPSPIDER \033[0m-----------------------------\n\033[0m";
+        $display_str .= 'PHPSpider version:' . self::VERSION . "          PHP version:" . PHP_VERSION . "\n";
+        $display_str .= 'start time:'. date('Y-m-d H:i:s', self::$time_start).'   run ' . floor((time()-self::$time_start)/(24*60*60)). ' days ' . floor(((time()-self::$time_start)%(24*60*60))/(60*60)) . " hours " . floor(((time()-self::$time_start)%(24*60*60))/60) . " minutes   \n";
+        $display_str .= 'spider name: ' . self::$configs['name'] . "\n";
+        $display_str .= "document: https://doc.phpspider.org\n";
+        $display_str .= "-------------------------------\033[47;30m TASKS \033[0m-------------------------------\n";
+        $collect   = $this->count_collect_url();
+        $collected = $this->count_collected_url();
+        $queue     = $this->queue_lsize();
+        $fields    = $this->get_fields_num();
+        $depth     = $this->get_depth_num();
+        $display_str .= str_pad($collect, 16);
+        $display_str .= str_pad($collected, 15);
+        $display_str .= str_pad($queue, 14);
+        $display_str .= str_pad($fields, 14);
+        $display_str .= str_pad($depth, 12);
+        $display_str .= "\n";
+
+        // 清屏
+        $this->shell_clear();
+        // 返回到第一行,第一列
+        //echo "\033[0;0H";
+        $display_str .= "---------------------------------------------------------------------\n";
+        $display_str .= "Press Ctrl-C to quit. Start success.\n";
+        echo $display_str;
+    }
+
 
     /**
      * 展示启动界面，Windows 不会到这里来
