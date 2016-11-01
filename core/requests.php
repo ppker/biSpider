@@ -368,12 +368,13 @@ class requests
         if (!is_resource ( self::$ch ))
         {
             self::$ch = curl_init ();
-            curl_setopt( self::$ch, CURLOPT_RETURNTRANSFER, true );
-            curl_setopt( self::$ch, CURLOPT_CONNECTTIMEOUT, self::$timeout );
-            curl_setopt( self::$ch, CURLOPT_HEADER, false );
+            curl_setopt( self::$ch, CURLOPT_RETURNTRANSFER, true ); // 如果成功 只返回结果，不直接输出内容
+            curl_setopt( self::$ch, CURLOPT_CONNECTTIMEOUT, self::$timeout ); // 在发起连接前等待的时间，如果设置为0，则不等待。
+            curl_setopt( self::$ch, CURLOPT_HEADER, false ); // 是否把头部信息包含在输出内容中
             curl_setopt( self::$ch, CURLOPT_USERAGENT, "phpspider-requests/".self::VERSION );
-            curl_setopt( self::$ch, CURLOPT_TIMEOUT, self::$timeout + 5);
+            curl_setopt( self::$ch, CURLOPT_TIMEOUT, self::$timeout + 5); // 请求数据 超时设置
             // 在多线程处理场景下使用超时选项时，会忽略signals对应的处理函数，但是无耐的是还有小概率的crash情况发生
+            // 启用时忽略所有的curl传递给php进行的信号。在SAPI多线程传输时此项被默认打开
             curl_setopt( self::$ch, CURLOPT_NOSIGNAL, true);
         }
         return self::$ch;

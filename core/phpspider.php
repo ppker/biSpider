@@ -1,11 +1,17 @@
 <?php
+// +----------------------------------------------------------------------
+// | PHPSpider [ A PHP Framework For Crawler ]
+// +----------------------------------------------------------------------
+// | Copyright (c) 2006-2014 https://doc.phpspider.org All rights reserved.
+// +----------------------------------------------------------------------
+// | Licensed ( http://www.apache.org/licenses/LICENSE-2.0 )
+// +----------------------------------------------------------------------
+// | Author: Seatle Yang <seatle@foxmail.com>
+// +----------------------------------------------------------------------
 
-/**
- * phpspider - A PHP Framework For Crawler
- *
- * @package  phpspider
- * @author   Seatle Yang <seatle@foxmail.com>
- */
+//----------------------------------
+// PHPSpider核心类文件
+//----------------------------------
 
 class phpspider
 {
@@ -306,17 +312,18 @@ class phpspider
 
         // 彩蛋
         $included_files = get_included_files();
-        $content = file_get_contents($included_files[0]);
-        if (!preg_match("#/\* Do NOT delete this comment \*/#", $content) || !preg_match("#/\* 不要删除这段注释 \*/#", $content))
-        {
-            $msg = "未知错误；请参考文档或寻求技术支持。";
-            if (util::is_win()) 
-            {
-                $msg = mb_convert_encoding($msg, "gbk", "utf-8");
-            }
-            log::error($msg);
-            exit;
-        }
+
+//        $content = file_get_contents($included_files[0]);
+//        if (!preg_match("#/\* Do NOT delete this comment \*/#", $content) || !preg_match("#/\* 不要删除这段注释 \*/#", $content))
+//        {
+//            $msg = "未知错误；请参考文档或寻求技术支持。";
+//            if (util::is_win())
+//            {
+//                $msg = mb_convert_encoding($msg, "gbk", "utf-8");
+//            }
+//            log::error($msg);
+//            exit;
+//        }
 
         self::$configs = $configs;
         self::$configs['name']       = isset(self::$configs['name'])       ? self::$configs['name']       : 'phpspider';
@@ -356,24 +363,13 @@ class phpspider
         }
     }
 
-    /**
-     * 添加入口队列
-     * @param $url
-     * @param array $options
-     */
     public function add_scan_url($url, $options = array())
     {
-        if (!$this->is_scan_page($url))
-        {
-            log::error("Domain of scan_urls (\"{$url}\") does not match the domains of the domain name\n");
-            exit;
-        }
-
         // 投递状态
         $status = false;
         $link = array(
             'url'          => $url,            
-            'url_type'     => 'scan_page', // 入口标志
+            'url_type'     => 'scan_page', 
             'method'       => isset($options['method'])       ? $options['method']       : 'get',             
             'headers'      => isset($options['headers'])      ? $options['headers']      : array(),    
             'params'       => isset($options['params'])       ? $options['params']       : array(),           
@@ -385,6 +381,7 @@ class phpspider
         );
         $status = $this->queue_lpush($link);
         log::debug(date("H:i:s")." Find scan page: {$url}");
+        return $status;
     }
 
     /**
@@ -414,14 +411,14 @@ class phpspider
             'depth'        => $depth,
         );
 
-        if ($this->is_list_page($url) && !$this->is_collect_url($url)) // list_page
+        if ($this->is_list_page($url) && !$this->is_collect_url($url))
         {
             log::debug(date("H:i:s")." Find list page: {$url}");
             $link['url_type'] = 'list_page';
             $status = $this->queue_lpush($link);
         }
 
-        if ($this->is_content_page($url) && !$this->is_collect_url($url)) // content_page
+        if ($this->is_content_page($url) && !$this->is_collect_url($url))
         {
             log::debug(date("H:i:s")." Find content page: {$url}");
             $link['url_type'] = 'content_page';
@@ -499,9 +496,18 @@ class phpspider
         return $result;
     }
 
+    // peng
+    public function test($method, $url, $selector) {
+
+        $html = requests::$method($url);
+        return selector::select($html, $selector);
+    }
+
+
+
     public function start()
     {
-        $this->parse_command(); // 检测命令
+        $this->parse_command();
 
         // 爬虫开始时间
         self::$time_start = time();
@@ -567,21 +573,16 @@ class phpspider
         $this->export_auth();
 
         // 检查 scan_urls 
-        if (empty(self::$configs['scan_urls'])) // 爬虫的入口链接
+        if (empty(self::$configs['scan_urls'])) 
         {
             log::error("No scan url to start\n");
             exit;
         }
         
-        // 放这个位置，可以添加入口页面 前置操作
-        if ($this->on_start)
-        {
-            call_user_func($this->on_start, $this);
-        }
-
         foreach ( self::$configs['scan_urls'] as $url ) 
         {
-            if (!$this->is_scan_page($url)) // 是否符合入口链接规则
+            // 只检查配置中的入口URL，通过 add_scan_url 添加的不检查了.
+            if (!$this->is_scan_page($url))
             {
                 log::error("Domain of scan_urls (\"{$url}\") does not match the domains of the domain name\n");
                 exit;
@@ -592,19 +593,17 @@ class phpspider
         if (util::is_win()) 
         {
             self::$configs['name'] = mb_convert_encoding(self::$configs['name'], "gbk", "utf-8");
-            // log::$log_show = true; 这里给注释掉吧
+            // log::$log_show = true;
         }
-        else 
-        {
-            log::$log_show = isset(self::$configs['log_show']) ? self::$configs['log_show'] : false;
-        }
+
+        log::$log_show = isset(self::$configs['log_show']) ? self::$configs['log_show'] : false;
 
         if (log::$log_show)
         {
             log::info("\n[ ".self::$configs['name']." Spider ] is started...\n");
             log::warn("PHPSpider Version: ".self::VERSION."\n");
             log::warn("Task Number: ".self::$tasknum."\n");
-            log::warn("!Documentation: \nhttps://doc.phpspider.org\n");
+            log::warn("!Document: https://doc.phpspider.org\n");
         }
 
         // 多任务和分布式都要清掉，当然分布式只清自己的
@@ -626,7 +625,17 @@ class phpspider
         // 添加入口URL到队列
         foreach ( self::$configs['scan_urls'] as $url ) 
         {
-            $this->add_scan_url($url);
+            // 去重
+            if (!$this->is_collect_url($url))
+            {
+                $this->add_scan_url($url);
+            }
+        }
+
+        // 放这个位置，可以添加入口页面
+        if ($this->on_start) 
+        {
+            call_user_func($this->on_start, $this);
         }
 
         while( $this->queue_lsize() )
@@ -658,10 +667,7 @@ class phpspider
             // 每采集成功一次页面，就刷新一次面板
             if (!log::$log_show) 
             {
-                if (util::is_win()) {
-                    $this->display_win_ui();
-                }
-                $this->display_ui();
+                $this->display_ui(!util::is_win());
             }
         } 
 
@@ -805,13 +811,13 @@ class phpspider
      */
     public function collect_page() 
     {
-        $count_collect_url = $this->count_collect_url(); // 待爬取页面数量
+        $count_collect_url = $this->count_collect_url();
         log::info(date("H:i:s")." Find pages: {$count_collect_url} \n");
 
-        $queue_lsize = $this->queue_lsize(); // 队列长度
+        $queue_lsize = $this->queue_lsize();
         log::info(date("H:i:s")." Waiting for collect pages: {$queue_lsize} \n");
 
-        $count_collected_url = $this->count_collected_url(); // 已爬取页面数量
+        $count_collected_url = $this->count_collected_url();
         log::info(date("H:i:s")." Collected pages: {$count_collected_url} \n");
 
         // 先进先出
@@ -905,7 +911,7 @@ class phpspider
             // 如果深度没有超过最大深度，获取下一级URL
             if (self::$configs['max_depth'] == 0 || $link['depth'] < self::$configs['max_depth']) 
             {
-                // 分析提取HTML页面中的URL，需要优化 XXX
+                // 分析提取HTML页面中的URL
                 $this->get_html_urls($page['raw'], $url, $link['depth'] + 1);
             }
         }
@@ -1094,8 +1100,22 @@ class phpspider
         //--------------------------------------------------------------------------------
         // 正则匹配出页面中的URL
         //--------------------------------------------------------------------------------
-        preg_match_all('/<a .*?href="(.*?)".*?>/is', $html, $matchs); 
-        $urls = !empty($matchs[1]) ? $matchs[1] : array();
+        // 同样进行1000次提取，xpath要6秒，正则一秒不到，所以没有什么特殊还是用正则吧
+        //$urls = selector::select($html, '//a/@href');
+        preg_match_all("/<a.*href=[\"']{0,1}(.*)[\"']{0,1}[> \r\n\t]{1,}/isU", $html, $matchs); 
+        $urls = array();
+        if (!empty($matchs[1])) 
+        {
+            foreach ($matchs[1] as $url) 
+            {
+                $urls[] = str_replace(array("\"", "'"), "", $url);
+            }
+        }
+
+        if (empty($urls)) 
+        {
+            return false;
+        }
 
         //--------------------------------------------------------------------------------
         // 过滤和拼凑URL
@@ -1107,13 +1127,6 @@ class phpspider
             $url = trim($url);
             if (empty($url)) 
             {
-                continue;
-            }
-
-            // 排除JavaScript的连接
-            if (strpos($url, "javascript:") !== false) 
-            {
-                unset($urls[$k]);
                 continue;
             }
 
@@ -1136,7 +1149,7 @@ class phpspider
         //--------------------------------------------------------------------------------
         // 把抓取到的URL放入队列
         //--------------------------------------------------------------------------------
-        foreach ($urls as $url) 
+        foreach ($urls as $url)
         {
             // 把当前页当做找到的url的Referer页
             $options = array(
@@ -1146,6 +1159,383 @@ class phpspider
             );
             $this->add_url($url, $options, $depth);
         }
+    }
+
+    /**
+     * 获得完整的连接地址
+     * 
+     * @param mixed $url            要检查的URL
+     * @param mixed $collect_url    从那个URL页面得到上面的URL
+     * @return void
+     * @author seatle <seatle@foxmail.com> 
+     * @created time :2016-09-23 17:13
+     */
+    public function fill_url($url, $collect_url)
+    {
+        $url = trim($url);
+        $collect_url = trim($collect_url);
+
+        // 排除JavaScript的连接
+        //if (strpos($url, "javascript:") !== false) 
+        if( preg_match("@^(javascript:|#|'|\")@i", $url) || $url == '')
+        {
+            return false;
+        }
+
+        $parse_url = @parse_url($collect_url);
+        if (empty($parse_url['scheme']) || empty($parse_url['host'])) 
+        {
+            return false;
+        }
+        $scheme = $parse_url['scheme'];
+        $domain = $parse_url['host'];
+        $path = empty($parse_url['path']) ? '' : $parse_url['path'];
+        $base_url_path = $domain.$path;
+        $base_url_path = preg_replace("/\/([^\/]*)\.(.*)$/","/",$base_url_path);
+        $base_url_path = preg_replace("/\/$/",'',$base_url_path);
+
+        $i = $path_step = 0;
+        $dstr = $pstr = '';
+        $pos = strpos($url,'#');
+        if($pos > 0)
+        {
+            // 去掉#和后面的字符串
+            $url = substr($url, 0, $pos);
+        }
+
+        // 京东变态的都是 //www.jd.com/111.html
+        if(substr($url, 0, 2) == '//')
+        {
+            $url = str_replace("//", "", $url);
+        }
+        // /1234.html
+        elseif($url[0] == '/')
+        {
+            $url = $domain.$url;
+        }
+        // ./1234.html、../1234.html 这种类型的
+        elseif($url[0] == '.')
+        {
+            if(!isset($url[2]))
+            {
+                return false;
+            }
+            else
+            {
+                $urls = explode('/',$url);
+                foreach($urls as $u)
+                {
+                    if( $u == '..' )
+                    {
+                        $path_step++;
+                    }
+                    // 遇到 .，不知道为什么不直接写$u == '.'，貌似一样的
+                    else if( $i < count($urls)-1 )
+                    {
+                        //$dstr .= $urls[$i].'/';
+                    }
+                    else
+                    {
+                        $dstr .= $urls[$i];
+                    }
+                    $i++;
+                }
+                $urls = explode('/',$base_url_path);
+                if(count($urls) <= $path_step)
+                {
+                    return false;
+                }
+                else
+                {
+                    $pstr = '';
+                    for($i=0;$i<count($urls)-$path_step;$i++){ $pstr .= $urls[$i].'/'; }
+                    $url = $pstr.$dstr;
+                }
+            }
+        }
+        else 
+        {
+            if( strtolower(substr($url, 0, 7))=='http://' )
+            {
+                $url = preg_replace('#^http://#i','',$url);
+                $scheme = "http";
+            }
+            else if( strtolower(substr($url, 0, 8))=='https://' )
+            {
+                $url = preg_replace('#^https://#i','',$url);
+                $scheme = "https";
+            }
+            else
+            {
+                $url = $base_url_path.'/'.$url;
+            }
+        }
+        // 两个 / 或以上的替换成一个 /
+		$url = preg_replace('@/{1,}@i', '/', $url);
+        $url = $scheme.'://'.$url;
+
+        $parse_url = @parse_url($url);
+        $domain = empty($parse_url['host']) ? $domain : $parse_url['host'];
+        // 如果host不为空，判断是不是要爬取的域名
+        if (!empty($parse_url['host'])) 
+        {
+            //排除非域名下的url以提高爬取速度
+            if (!in_array($parse_url['host'], self::$configs['domains'])) 
+            {
+                return false;
+            }
+        }
+
+        return $url;
+    }
+
+    /**
+     * 分析提取HTML页面中的字段
+     * 
+     * @param mixed $html
+     * @return void
+     * @author seatle <seatle@foxmail.com> 
+     * @created time :2016-09-18 10:17
+     */
+    public function get_html_fields($html, $url, $page) 
+    {
+        $fields = $this->get_fields(self::$configs['fields'], $html, $url, $page);
+
+        if (!empty($fields)) 
+        {
+            if ($this->on_extract_page) 
+            {
+                $return = call_user_func($this->on_extract_page, $page, $fields);
+                if (!isset($return))
+                {
+                    log::warn("on_extract_page return value can't be empty\n");
+                }
+                elseif (!is_array($return))
+                {
+                    log::warn("on_extract_page return value must be an array\n");
+                }
+                else 
+                {
+                    $fields = $return;
+                }
+            }
+
+            if (isset($fields) && is_array($fields)) 
+            {
+                $fields_num = $this->incr_fields_num();
+                if (self::$configs['max_fields'] != 0 && $fields_num > self::$configs['max_fields']) 
+                {
+                    exit(0);
+                }
+
+                if (version_compare(PHP_VERSION,'5.4.0','<'))
+                {
+                    $fields_str = json_encode($fields);
+                    $fields_str = preg_replace_callback( "#\\\u([0-9a-f]{4})#i", function($matchs) {
+                        return iconv('UCS-2BE', 'UTF-8', pack('H4', $matchs[1]));
+                    }, $fields_str ); 
+                } 
+                else
+                {
+                    $fields_str = json_encode($fields, JSON_UNESCAPED_UNICODE);
+                }
+
+                if (util::is_win()) 
+                {
+                    $fields_str = mb_convert_encoding($fields_str, 'gb2312', 'utf-8');
+                }
+                log::info(date("H:i:s")." Result[{$fields_num}]: ".$fields_str."\n");
+
+                // 如果设置了导出选项
+                if (!empty(self::$configs['export'])) 
+                {
+                    self::$export_type = isset(self::$configs['export']['type']) ? self::$configs['export']['type'] : '';
+                    if (self::$export_type == 'csv') 
+                    {
+                        util::put_file(self::$export_file, util::format_csv($fields)."\n", FILE_APPEND);
+                    }
+                    elseif (self::$export_type == 'sql') 
+                    {
+                        $sql = db::insert(self::$export_table, $fields, true);
+                        util::put_file(self::$export_file, $sql.";\n", FILE_APPEND);
+                    }
+                    elseif (self::$export_type == 'db') 
+                    {
+                        // var_dump($fields);die;
+                        db::insert(self::$export_table, $fields);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 根据配置提取HTML代码块中的字段
+     * 
+     * @param mixed $confs
+     * @param mixed $html
+     * @param mixed $page
+     * @return void
+     * @author seatle <seatle@foxmail.com> 
+     * @created time :2016-09-23 17:13
+     */
+    public function get_fields($confs, $html, $url, $page) 
+    {
+        $fields = array();
+        foreach ($confs as $conf) 
+        {
+            // 当前field抽取到的内容是否是有多项
+            $repeated = isset($conf['repeated']) && $conf['repeated'] ? true : false;
+            // 当前field抽取到的内容是否必须有值
+            $required = isset($conf['required']) && $conf['required'] ? true : false;
+
+            if (empty($conf['name'])) 
+            {
+                log::error("The field name is null, please check your \"fields\" and add the name of the field\n");
+                exit;
+            }
+
+            $values = array();
+            // 如果定义抽取规则
+            if (!empty($conf['selector'])) 
+            {
+                // 如果这个field是上一个field的附带连接
+                if (isset($conf['source_type']) && $conf['source_type']=='attached_url') 
+                {
+                    // 取出上个field的内容作为连接，内容分页是不进队列直接下载网页的
+                    if (!empty($fields[$conf['attached_url']])) 
+                    {
+                        $collect_url = $this->fill_url($url, $fields[$conf['attached_url']]);
+                        log::debug(date("H:i:s")." Find attached content page: {$url}");
+                        requests::$input_encoding = null;
+                        $html = $this->request_url($collect_url);
+                        // 在一个attached_url对应的网页下载完成之后调用. 主要用来对下载的网页进行处理.
+                        if ($this->on_attached_download_page) 
+                        {
+                            $return = call_user_func($this->on_attached_download_page, $html, $this);
+                            if (isset($return)) 
+                            {
+                                $html = $return;
+                            }
+                        }
+
+                        // 请求获取完分页数据后把连接删除了 
+                        unset($fields[$conf['attached_url']]);
+                    }
+                }
+
+                // 没有设置抽取规则的类型 或者 设置为 xpath
+                if (!isset($conf['selector_type']) || $conf['selector_type']=='xpath') 
+                {
+                    // 返回值一定是多项的
+                    // 注意：这下不一定是多项的了
+                    $values = $this->get_fields_xpath($html, $conf['selector'], $conf['name']);
+                }
+                elseif ($conf['selector_type']=='css') 
+                {
+                    $values = $this->get_fields_css($html, $conf['selector'], $conf['name']);
+                }
+                elseif ($conf['selector_type']=='regex') 
+                {
+                    $values = $this->get_fields_regex($html, $conf['selector'], $conf['name']);
+                }
+
+                // field不为空而且存在子配置
+                if (!empty($values) && !empty($conf['children'])) 
+                {
+                    $child_values = array();
+                    // 父项抽取到的html作为子项的提取内容
+                    foreach ($values as $html) 
+                    {
+                        // 递归调用本方法，所以多少子项目都支持
+                        $child_value = $this->get_fields($conf['children'], $html, $url, $page);
+                        if (!empty($child_value)) 
+                        {
+                            $child_values[] = $child_value;
+                        }
+                    }
+                    // 有子项就存子项的数组，没有就存HTML代码块
+                    if (!empty($child_values)) 
+                    {
+                        $values = $child_values;
+                    }
+                }
+            }
+
+            if (empty($values)) 
+            {
+                // 如果值为空而且值设置为必须项，跳出foreach循环
+                if ($required) 
+                {
+                    // 清空整个 fields
+                    $fields = array();
+                    break;
+                }
+                // 避免内容分页时attached_url拼接时候string + array了
+                $fields[$conf['name']] = '';
+                //$fields[$conf['name']] = array();
+            }
+            else 
+            {
+                if (is_array($values)) 
+                {
+                    if ($repeated) 
+                    {
+                        $fields[$conf['name']] = $values;
+                    }
+                    else 
+                    {
+                        $fields[$conf['name']] = $values[0];
+                    }
+                }
+                else 
+                {
+                    $fields[$conf['name']] = $values;
+                }
+                // 不重复抽取则只取第一个元素
+                //$fields[$conf['name']] = $repeated ? $values : $values[0];
+            }
+        }
+
+        if (!empty($fields)) 
+        {
+            foreach ($fields as $fieldname => $data) 
+            {
+                $pattern = "/<img.*src=[\"']{0,1}(.*)[\"']{0,1}[> \r\n\t]{1,}/isU";
+                /*$pattern = "/<img.*?src=[\'|\"](.*?(?:[\.gif|\.jpg|\.jpeg|\.png]))[\'|\"].*?[\/]?>/i"; */
+                // 在抽取到field内容之后调用, 对其中包含的img标签进行回调处理
+                if ($this->on_handle_img && preg_match($pattern, $data)) 
+                {
+                    $return = call_user_func($this->on_handle_img, $fieldname, $data);
+                    if (!isset($return))
+                    {
+                        log::warn("on_handle_img return value can't be empty\n");
+                    }
+                    else 
+                    {
+                        // 有数据才会执行 on_handle_img 方法，所以这里不要被替换没了
+                        $data = $return;
+                    }
+                }
+
+                // 当一个field的内容被抽取到后进行的回调, 在此回调中可以对网页中抽取的内容作进一步处理
+                if ($this->on_extract_field) 
+                {
+                    $return = call_user_func($this->on_extract_field, $fieldname, $data, $page, self::$taskid);
+                    if (!isset($return))
+                    {
+                        log::warn("on_extract_field return value can't be empty\n");
+                    }
+                    else 
+                    {
+                        // 有数据才会执行 on_extract_field 方法，所以这里不要被替换没了
+                        $fields[$fieldname] = $return;
+                    }
+                }
+            }
+        }
+
+        return $fields;
     }
 
     /**
@@ -1304,7 +1694,7 @@ class phpspider
         if (self::$tasknum > 1 || self::$save_running_state)
         {
             cls_redis::incr("collect_urls_num"); 
-            cls_redis::set("collect_urls-".md5($url), time()); // url 记录
+            cls_redis::set("collect_urls-".md5($url), time()); 
         }
         else 
         {
@@ -1469,7 +1859,7 @@ class phpspider
         if (self::$tasknum > 1 || self::$save_running_state)
         {
             $link = json_encode($link);
-            cls_redis::lpush("collect_queue", $link);
+            cls_redis::lpush("collect_queue", $link); 
         }
         else 
         {
@@ -1564,7 +1954,7 @@ class phpspider
     {
         if (self::$tasknum > 1 || self::$save_running_state)
         {
-            $lsize = cls_redis::lsize("collect_queue");
+            $lsize = cls_redis::lsize("collect_queue"); 
         }
         else 
         {
@@ -1665,346 +2055,7 @@ class phpspider
         return $fields_num;
     }
 
-    /**
-     * 获得完整的连接地址
-     * 
-     * @param mixed $url            要检查的URL
-     * @param mixed $collect_url    从那个URL页面得到上面的URL
-     * @return void
-     * @author seatle <seatle@foxmail.com> 
-     * @created time :2016-09-23 17:13
-     */
-    public function fill_url($url, $collect_url)
-    {
-        $url = trim($url);
-        $collect_url = trim($collect_url);
-
-        $parse_url = @parse_url($collect_url);
-        if (empty($parse_url['scheme']) || empty($parse_url['host'])) 
-        {
-            return false;
-        }
-        $scheme = $parse_url['scheme'];
-        $domain = $parse_url['host'];
-        $path = empty($parse_url['path']) ? '' : $parse_url['path'];
-        $base_url_path = $domain.$path;
-        $base_url_path = preg_replace("/\/([^\/]*)\.(.*)$/","/",$base_url_path);
-        $base_url_path = preg_replace("/\/$/",'',$base_url_path);
-
-        $i = $path_step = 0;
-        $dstr = $pstr = '';
-        $pos = strpos($url,'#');
-        // href="#;" 这样的连接也有，日
-        if($pos === 0)
-        {
-            return false;
-        }
-        elseif($pos > 0)
-        {
-            // 去掉 #
-            $url = substr($url, 0, $pos);
-        }
-
-        // 京东变态的都是 //www.jd.com/111.html
-        if(substr($url, 0, 2) == '//')
-        {
-            $url = str_replace("//", "", $url);
-        }
-        // /1234.html
-        elseif($url[0] == '/')
-        {
-            $url = $domain.$url;
-        }
-        // ./1234.html、../1234.html 这种类型的
-        elseif($url[0] == '.')
-        {
-            if(!isset($url[2]))
-            {
-                return false;
-            }
-            else
-            {
-                $urls = explode('/',$url);
-                foreach($urls as $u)
-                {
-                    if( $u == '..' )
-                    {
-                        $path_step++;
-                    }
-                    // 遇到 .，不知道为什么不直接写$u == '.'，貌似一样的
-                    else if( $i < count($urls)-1 )
-                    {
-                        //$dstr .= $urls[$i].'/';
-                    }
-                    else
-                    {
-                        $dstr .= $urls[$i];
-                    }
-                    $i++;
-                }
-                $urls = explode('/',$base_url_path);
-                if(count($urls) <= $path_step)
-                {
-                    return false;
-                }
-                else
-                {
-                    $pstr = '';
-                    for($i=0;$i<count($urls)-$path_step;$i++){ $pstr .= $urls[$i].'/'; }
-                    $url = $pstr.$dstr;
-                }
-            }
-        }
-        else 
-        {
-            if( strtolower(substr($url, 0, 7))=='http://' )
-            {
-                $url = preg_replace('#^http://#i','',$url);
-                $scheme = "http";
-            }
-            else if( strtolower(substr($url, 0, 8))=='https://' )
-            {
-                $url = preg_replace('#^https://#i','',$url);
-                $scheme = "https";
-            }
-            else
-            {
-                $url = $base_url_path.'/'.$url;
-            }
-        }
-        $url = $scheme.'://'.$url;
-
-        $parse_url = @parse_url($url);
-        $domain = empty($parse_url['host']) ? $domain : $parse_url['host'];
-        // 如果host不为空，判断是不是要爬取的域名
-        if (!empty($parse_url['host'])) 
-        {
-            //排除非域名下的url以提高爬取速度
-            if (!in_array($parse_url['host'], self::$configs['domains'])) 
-            {
-                return false;
-            }
-        }
-
-        return $url;
-    }
-
-    /**
-     * 分析提取HTML页面中的字段
-     * 
-     * @param mixed $html
-     * @return void
-     * @author seatle <seatle@foxmail.com> 
-     * @created time :2016-09-18 10:17
-     */
-    public function get_html_fields($html, $url, $page) 
-    {
-        $fields = $this->get_fields(self::$configs['fields'], $html, $url, $page);
-
-        if (!empty($fields)) 
-        {
-            if ($this->on_extract_page) 
-            {
-                $return_data = call_user_func($this->on_extract_page, $page, $fields);
-                if (!isset($return_data))
-                {
-                    log::warn("on_extract_page function return value can't be empty\n");
-                }
-                elseif (!is_array($return_data))
-                {
-                    log::warn("on_extract_page function return value must be an array\n");
-                }
-                else 
-                {
-                    $fields = $return_data;
-                }
-            }
-
-            if (isset($fields) && is_array($fields)) 
-            {
-                $fields_num = $this->incr_fields_num();
-                if (self::$configs['max_fields'] != 0 && $fields_num > self::$configs['max_fields']) 
-                {
-                    exit(0);
-                }
-
-                $fields_str = json_encode($fields, JSON_UNESCAPED_UNICODE);
-                if (util::is_win()) 
-                {
-                    $fields_str = mb_convert_encoding($fields_str, 'gb2312', 'utf-8');
-                }
-                log::info(date("H:i:s")." Result[{$fields_num}]: ".$fields_str."\n");
-
-                // 如果设置了导出选项
-                if (!empty(self::$configs['export'])) 
-                {
-                    self::$export_type = isset(self::$configs['export']['type']) ? self::$configs['export']['type'] : '';
-                    if (self::$export_type == 'csv') 
-                    {
-                        util::put_file(self::$export_file, util::format_csv($fields)."\n", FILE_APPEND);
-                    }
-                    elseif (self::$export_type == 'sql') 
-                    {
-                        $sql = db::insert(self::$export_table, $fields, true);
-                        util::put_file(self::$export_file, $sql.";\n", FILE_APPEND);
-                    }
-                    elseif (self::$export_type == 'db') 
-                    {
-                        db::insert(self::$export_table, $fields);
-                    }
-                }
-            }
-
-        }
-    }
-
-    /**
-     * 根据配置提取HTML代码块中的字段
-     * 
-     * @param mixed $confs
-     * @param mixed $html
-     * @param mixed $page
-     * @return void
-     * @author seatle <seatle@foxmail.com> 
-     * @created time :2016-09-23 17:13
-     */
-    public function get_fields($confs, $html, $url, $page) 
-    {
-        $fields = array();
-        foreach ($confs as $conf) 
-        {
-            // 当前field抽取到的内容是否是有多项
-            $repeated = isset($conf['repeated']) && $conf['repeated'] ? true : false;
-            // 当前field抽取到的内容是否必须有值
-            $required = isset($conf['required']) && $conf['required'] ? true : false;
-
-            if (empty($conf['name'])) 
-            {
-                log::error("The field name is null, please check your \"fields\" and add the name of the field\n");
-                exit;
-            }
-
-            $values = array();
-            // 如果定义抽取规则
-            if (!empty($conf['selector'])) 
-            {
-                // 如果这个field是上一个field的附带连接
-                if (isset($conf['source_type']) && $conf['source_type']=='attached_url') 
-                {
-                    // 取出上个field的内容作为连接，内容分页是不进队列直接下载网页的
-                    if (!empty($fields[$conf['attached_url']])) 
-                    {
-                        $collect_url = $this->fill_url($url, $fields[$conf['attached_url']]);
-                        log::debug(date("H:i:s")." Find attached content page: {$url}");
-                        requests::$input_encoding = null;
-                        $html = $this->request_url($collect_url);
-                        // 在一个attached_url对应的网页下载完成之后调用. 主要用来对下载的网页进行处理.
-                        if ($this->on_attached_download_page) 
-                        {
-                            $return = call_user_func($this->on_attached_download_page, $html, $this);
-                            if (isset($return)) 
-                            {
-                                $html = $return;
-                            }
-                        }
-
-                        // 请求获取完分页数据后把连接删除了 
-                        unset($fields[$conf['attached_url']]);
-                    }
-                }
-
-                // 没有设置抽取规则的类型 或者 设置为 xpath
-                if (!isset($conf['selector_type']) || $conf['selector_type']=='xpath') 
-                {
-                    // 返回值一定是多项的
-                    $values = $this->get_fields_xpath($html, $conf['selector'], $conf['name']);
-                }
-                elseif ($conf['selector_type']=='regex') 
-                {
-                    $values = $this->get_fields_regex($html, $conf['selector'], $conf['name']);
-                }
-
-                // field不为空而且存在子配置
-                if (!empty($values) && !empty($conf['children'])) 
-                {
-                    $child_values = array();
-                    // 父项抽取到的html作为子项的提取内容
-                    foreach ($values as $html) 
-                    {
-                        // 递归调用本方法，所以多少子项目都支持
-                        $child_value = $this->get_fields($conf['children'], $url, $html, $page);
-                        if (!empty($child_value)) 
-                        {
-                            $child_values[] = $child_value;
-                        }
-                    }
-                    // 有子项就存子项的数组，没有就存HTML代码块
-                    if (!empty($child_values)) 
-                    {
-                        $values = $child_values;
-                    }
-                }
-            }
-
-            if (empty($values)) 
-            {
-                // 如果值为空而且值设置为必须项，跳出foreach循环
-                if ($required) 
-                {
-                    // 清空整个 fields
-                    $fields = array();
-                    break;
-                }
-                // 避免内容分页时attached_url拼接时候string + array了
-                $fields[$conf['name']] = '';
-                //$fields[$conf['name']] = array();
-            }
-            else 
-            {
-                // 不重复抽取则只取第一个元素
-                $fields[$conf['name']] = $repeated ? $values : $values[0];
-            }
-        }
-
-        if (!empty($fields)) 
-        {
-            foreach ($fields as $fieldname => $data) 
-            {
-                $pattern = "/<img.*?src=[\'|\"](.*?(?:[\.gif|\.jpg|\.jpeg|\.png]))[\'|\"].*?[\/]?>/i"; 
-                // 在抽取到field内容之后调用, 对其中包含的img标签进行回调处理
-                if ($this->on_handle_img && preg_match($pattern, $data)) 
-                {
-                    $return = call_user_func($this->on_handle_img, $fieldname, $data);
-                    if (!isset($return))
-                    {
-                        log::warn("on_handle_img function return value can't be empty\n");
-                    }
-                    else 
-                    {
-                        // 有数据才会执行 on_handle_img 方法，所以这里不要被替换没了
-                        $data = $return;
-                    }
-                }
-
-                // 当一个field的内容被抽取到后进行的回调, 在此回调中可以对网页中抽取的内容作进一步处理
-                if ($this->on_extract_field) 
-                {
-                    $return = call_user_func($this->on_extract_field, $fieldname, $data, $page, self::$taskid);
-                    if (!isset($return))
-                    {
-                        log::warn("on_extract_field function return value can't be empty\n");
-                    }
-                    else 
-                    {
-                        // 有数据才会执行 on_extract_field 方法，所以这里不要被替换没了
-                        $fields[$fieldname] = $return;
-                    }
-                }
-            }
-        }
-
-        return $fields;
-    }
+    
 
     /**
      * 转换数组值的编码格式
@@ -2030,56 +2081,12 @@ class phpspider
      */
     public function get_fields_xpath($html, $selector, $fieldname) 
     {
-        $dom = new DOMDocument();
-        @$dom->loadHTML('<?xml encoding="UTF-8">'.$html);
-        //libxml_use_internal_errors(true);
-        //$dom->loadHTML('<?xml encoding="UTF-8">'.$html);
-        //$errors = libxml_get_errors();
-        //if (!empty($errors)) 
-        //{
-            //print_r($errors);
-            //exit;
-        //}
-
-        $xpath = new DOMXpath($dom);
-        $elements = @$xpath->query($selector);
-        if ($elements === false)
+        $result = selector::select($html, $selector);
+        if (selector::$error) 
         {
-            log::error("Field(\"{$fieldname}\") the selector in the xpath(\"{$selector}\") syntax errors\n");
-            exit;
+            log::error("Field(\"{$fieldname}\") ".selector::$error."\n");
         }
-
-        $array = array();
-        if (!is_null($elements)) 
-        {
-            foreach ($elements as $element) 
-            {
-                $nodeName = $element->nodeName;
-                $nodeType = $element->nodeType;     // 1.Element 2.Attribute 3.Text
-                //$nodeAttr = $element->getAttribute('src');
-                //$nodes = util::node_to_array($dom, $element);
-                //echo $nodes['@src']."\n";
-                // 如果是img标签，直接取src值
-                if ($nodeType == 1 && in_array($nodeName, array('img'))) 
-                {
-                    $content = $element->getAttribute('src');
-                }
-                // 如果是标签属性，直接取节点值
-                elseif ($nodeType == 2 || $nodeType == 3) 
-                {
-                    $content = $element->nodeValue;
-                }
-                else 
-                {
-                    // 保留nodeValue里的html符号，给children二次提取
-                    $content = $dom->saveXml($element);
-                    //$content = trim($dom->saveHtml($element));
-                    $content = preg_replace(array("#^<{$nodeName}.*>#isU","#</{$nodeName}>$#isU"), array('', ''), $content);
-                }
-                $array[] = trim($content);
-            }
-        }
-        return $array;
+        return $result;
     }
 
     /**
@@ -2093,21 +2100,12 @@ class phpspider
      */
     public function get_fields_regex($html, $selector, $fieldname) 
     {
-        if(@preg_match_all($selector, $html, $out) === false)
+        $result = selector::select($html, $selector, 'regex');
+        if (selector::$error) 
         {
-            log::error("Field(\"{$fieldname}\") the selector in the regex(\"{$selector}\") syntax errors\n");
-            exit;
+            log::error("Field(\"{$fieldname}\") ".selector::$error."\n");
         }
-
-        $array = array();
-        if (!is_null($out[1])) 
-        {
-            foreach ($out[1] as $v) 
-            {
-                $array[] = trim($v);
-            }
-        }
-        return $array;
+        return $result;
     }
 
     /**
@@ -2122,6 +2120,12 @@ class phpspider
      */
     public function get_fields_css($html, $selector, $fieldname) 
     {
+        $result = selector::select($html, $selector, 'css');
+        if (selector::$error) 
+        {
+            log::error("Field(\"{$fieldname}\") ".selector::$error."\n");
+        }
+        return $result;
     }
 
     public function shell_clear()
@@ -2129,73 +2133,46 @@ class phpspider
         array_map(create_function('$a', 'print chr($a);'), array(27, 91, 72, 27, 91, 50, 74));
     }
 
-    public function display_win_ui() {
-
-        $display_str = "\033[1A\n\033[K-----------------------------\033[47;30m PHPSPIDER \033[0m-----------------------------\n\033[0m";
-        $display_str .= 'PHPSpider version:' . self::VERSION . "          PHP version:" . PHP_VERSION . "\n";
-        $display_str .= 'start time:'. date('Y-m-d H:i:s', self::$time_start).'   run ' . floor((time()-self::$time_start)/(24*60*60)). ' days ' . floor(((time()-self::$time_start)%(24*60*60))/(60*60)) . " hours " . floor(((time()-self::$time_start)%(24*60*60))/60) . " minutes   \n";
-        $display_str .= 'spider name: ' . self::$configs['name'] . "\n";
-        $display_str .= "document: https://doc.phpspider.org\n";
-        $display_str .= "-------------------------------\033[47;30m TASKS \033[0m-------------------------------\n";
-        $collect   = $this->count_collect_url();
-        $collected = $this->count_collected_url();
-        $queue     = $this->queue_lsize();
-        $fields    = $this->get_fields_num();
-        $depth     = $this->get_depth_num();
-        $display_str .= str_pad($collect, 16);
-        $display_str .= str_pad($collected, 15);
-        $display_str .= str_pad($queue, 14);
-        $display_str .= str_pad($fields, 14);
-        $display_str .= str_pad($depth, 12);
-        $display_str .= "\n";
-
-        // 清屏
-        $this->shell_clear();
-        // 返回到第一行,第一列
-        //echo "\033[0;0H";
-        $display_str .= "---------------------------------------------------------------------\n";
-        $display_str .= "Press Ctrl-C to quit. Start success.\n";
-        echo $display_str;
-    }
-
-
     /**
      * 展示启动界面，Windows 不会到这里来
      * @return void
      */
-    public function display_ui()
+    public function display_ui($os = true)
     {
-        $loadavg = sys_getloadavg();
-        foreach ($loadavg as $k=>$v) 
-        {
-            $loadavg[$k] = round($v, 2);
+        if ($os) {
+            $loadavg = sys_getloadavg();
+            foreach ($loadavg as $k=>$v)
+            {
+                $loadavg[$k] = round($v, 2);
+            }
         }
+
         $display_str = "\033[1A\n\033[K-----------------------------\033[47;30m PHPSPIDER \033[0m-----------------------------\n\033[0m";
         $display_str .= 'PHPSpider version:' . self::VERSION . "          PHP version:" . PHP_VERSION . "\n";
         $display_str .= 'start time:'. date('Y-m-d H:i:s', self::$time_start).'   run ' . floor((time()-self::$time_start)/(24*60*60)). ' days ' . floor(((time()-self::$time_start)%(24*60*60))/(60*60)) . " hours " . floor(((time()-self::$time_start)%(24*60*60))/60) . " minutes   \n";
         $display_str .= 'spider name: ' . self::$configs['name'] . "\n";
-        $display_str .= 'load average: ' . implode(", ", $loadavg) . "\n";
+        if ($os) $display_str .= 'load average: ' . implode(", ", $loadavg) . "\n";
         $display_str .= "document: https://doc.phpspider.org\n";
         $display_str .= "-------------------------------\033[47;30m TASKS \033[0m-------------------------------\n";
 
-        $display_str .= "\033[47;30mtaskid\033[0m". str_pad('', self::$taskid_length+2-strlen('taskid')). 
-        "\033[47;30mpid\033[0m". str_pad('', self::$pid_length+2-strlen('pid')). 
-        "\033[47;30mmem\033[0m". str_pad('', self::$mem_length+2-strlen('mem')). 
-        "\033[47;30mcollect succ\033[0m". str_pad('', self::$urls_length+2-strlen('collect succ')). 
-        "\033[47;30mcollect fail\033[0m". str_pad('', self::$urls_length+2-strlen('collect fail')). 
-        "\033[47;30mspeed\033[0m". str_pad('', self::$speed_length+2-strlen('speed')). 
-        "\n";
+        $display_str .= str_pad("taskid", 14-strlen("taskid")).
+            str_pad("pid", 12-strlen("pid")).
+            str_pad("mem", 8-strlen("mem")).
+            str_pad("collect succ", 27-strlen("collect succ")).
+            str_pad("collect fail", 35-strlen("collect fail")).
+            str_pad("speed", 10-strlen("speed")).
+            "\n";
 
         $display_str .= $this->display_process_ui();
 
         $display_str .= "---------------------------\033[47;30m COLLECT STATUS \033[0m--------------------------\n";
 
-        $display_str .= "\033[47;30mfind pages\033[0m". str_pad('', 16-strlen('find pages')). 
-        "\033[47;30mcollected\033[0m". str_pad('', 15-strlen('collected')). 
-        "\033[47;30mqueue\033[0m". str_pad('', 14-strlen('queue')). 
-        "\033[47;30mfields\033[0m". str_pad('', 14-strlen('fields')). 
-        "\033[47;30mdepth\033[0m". str_pad('', 12-strlen('depth')). 
-        "\n";
+        $display_str .= str_pad('find pages', 22-strlen('find pages')).
+            str_pad('collected', 27-strlen('collected')).
+            str_pad('queue', 17-strlen('queue')).
+            str_pad('fields', 22-strlen('fields')).
+            str_pad('depth', 12-strlen('depth')).
+            "\n";
 
         $collect   = $this->count_collect_url();
         $collected = $this->count_collected_url();
@@ -2219,13 +2196,13 @@ class phpspider
 
         //if(self::$daemonize)
         //{
-            //global $argv;
-            //$start_file = $argv[0];
-            //echo "Input \"php $start_file stop\" to quit. Start success.\n";
+        //global $argv;
+        //$start_file = $argv[0];
+        //echo "Input \"php $start_file stop\" to quit. Start success.\n";
         //}
         //else
         //{
-            //echo "Press Ctrl-C to quit. Start success.\n";
+        //echo "Press Ctrl-C to quit. Start success.\n";
         //}
     }
 
